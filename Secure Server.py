@@ -187,7 +187,7 @@ class SecureLogServer:
         try:
             server_socket.bind((self.host, self.port))
             server_socket.listen(5)
-            print(f"🚀 Secure Log Server started on {self.host}:{self.port}")
+            print(f" Secure Log Server started on {self.host}:{self.port}")
             print("Waiting for client connections...")
 
             while True:
@@ -196,7 +196,7 @@ class SecureLogServer:
                 self.handle_client(client_sock, client_addr)
 
         except KeyboardInterrupt:
-            print("\n🛑 Server shutdown requested")
+            print("\n Server shutdown requested")
         except Exception as e:
             print(f"Server error: {e}")
         finally:
@@ -231,8 +231,8 @@ def generate_keys_if_missing():
         with open("client_public_key.pem", "wb") as f:
             f.write(client_key.publickey().export_key())
 
-        print("✓ Key pairs generated successfully")
-        print("📋 Distribute these files:")
+        print(" Key pairs generated successfully")
+        print(" Distribute these files:")
         print("   - client_private_key.pem → Client")
         print("   - client_public_key.pem → Server")
         print("   - server_public_key.pem → Client")
@@ -245,4 +245,5 @@ if __name__ == "__main__":
 
 
     server = SecureLogServer()
+
     server.start_server()
