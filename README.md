@@ -11,3 +11,5 @@ On the server side, the program listens for incoming connections from clients. W
 If the verification is successful, the server securely stores the logs in a special folder, along with metadata like the time received, the client’s IP address, and whether the signature was valid. The server also sends a message back to the client to confirm that the logs were received and processed correctly.
 
 The system supports both manual sending, where the user can choose to send logs right away, and automatic sending, where the client sends logs every day at a set time (for example, 17:00). This makes it flexible for different use cases, such as continuous security monitoring or daily log backups.
+
+Iam still working on this project and the finall version will be uploaded soon.
