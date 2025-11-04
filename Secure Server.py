@@ -82,7 +82,7 @@ class SecureLogServer:
             self.handle(conn, addr)
 
 
-# ——— ONE-TIME KEY GENERATOR ———
+#KEY GENERATOR
 if not os.path.exists("server_private_key.pem"):
     print("Generating keys...")
     k = RSA.generate(2048)
@@ -94,4 +94,5 @@ if not os.path.exists("server_private_key.pem"):
     print("Keys ready!")
 
 if __name__ == "__main__":
+
     SecureLogServer().start()
