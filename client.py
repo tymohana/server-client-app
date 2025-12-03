@@ -22,6 +22,7 @@ class Log_Client:
             print("Keys ready!")
     
     def load_keys(self):
+        self.keygen()
         self.client_private_key = RSA.import_key(open("client_private_key.pem", "rb").read())
         self.server_public_key = RSA.import_key(open("server_public_key.pem", "rb").read())
 
@@ -29,13 +30,13 @@ class Log_Client:
         with open("/var/log/syslog", "rb") as f:
             return f.read()
 
-
     # Creating the signature using client private key
     def sign_logs(self, logs):
         hash_obj = SHA512.new(logs)
         signer = PKCS1_v1_5.new(self.client_private_key)
         signature = signer.sign(hash_obj)
         return signature
+    
     # Encrypt logs using AES key
     def encrypt_logs(self, logs):
         aes_key = get_random_bytes(32)
@@ -43,7 +44,7 @@ class Log_Client:
         ciphertext, tag = cipher_aes.encrypt_and_digest(logs)
         return ciphertext, tag, cipher_aes.nonce , aes_key
 
-    #Encrypt AES key with RSA
+    # Encrypt AES key with RSA
     def encrypt_aes_key(self, aes_key):
         cipher_rsa = PKCS1_OAEP.new(self.server_public_key)
         encrypted_key = cipher_rsa.encrypt(aes_key)
@@ -80,7 +81,6 @@ class Log_Client:
         except Exception as e:
             print(f"Error:{e}")
 
-
     def manual_send(self):
         print("Sending logs manually...")
         self.send_logs()
@@ -97,7 +97,6 @@ class Log_Client:
                 next_check = f"Next check in 30 seconds (current time: {now.strftime('%H:%M:%S')})"
                 print(next_check, end='\r')
                 time.sleep(30)
-
 
 def main():
     client = Log_Client()
