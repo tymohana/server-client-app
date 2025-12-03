@@ -7,8 +7,8 @@ from Cryptodome.Hash import SHA512
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Signature import PKCS1_v1_5
 
-class SecureLogServer:
-    def __init__(self, ip="127.0.0.1", port=8080):
+class Server:
+    def __init__(self, ip="0.0.0.0", port=8080):
         self.ip = ip
         self.port = port
         self.load_keys()
@@ -19,11 +19,7 @@ class SecureLogServer:
             k = RSA.generate(2048)
             open("server_private_key.pem", "wb").write(k.export_key())
             open("server_public_key.pem", "wb").write(k.publickey().export_key())
-
-    def load_keys(self):
-        self.server_priv = RSA.import_key(open("server_private_key.pem", "rb").read())
-        print("Keys loaded")
-
+    
     def receive_exact(self, sock, length):
         data = b""
         while len(data) < length:
@@ -32,6 +28,10 @@ class SecureLogServer:
                 raise ConnectionError("Socket closed")
             data += chunk
         return data
+
+    def load_keys(self):
+        self.server_priv = RSA.import_key(open("server_private_key.pem", "rb").read())
+        print("Keys loaded")
 
     def receive_msg(self, sock):
         length = struct.unpack(">I", self.receive_exact(sock, 4))[0]
@@ -101,4 +101,4 @@ class SecureLogServer:
             self.handle(conn, addr)
 
 if __name__ == "__main__":
-    SecureLogServer().start()
+    Server().start()

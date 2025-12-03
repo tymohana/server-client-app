@@ -8,7 +8,7 @@ from Cryptodome.PublicKey import RSA
 from Cryptodome.Signature import PKCS1_v1_5
 from Cryptodome.Random import get_random_bytes
 
-class Log_Client:
+class Client:
     def __init__(self):
         self.server_ip = "127.0.0.1"
         self.server_port = 8080
@@ -20,6 +20,15 @@ class Log_Client:
             open("client_private_key.pem", "wb").write(c.export_key())
             open("client_public_key.pem", "wb").write(c.publickey().export_key())
             print("Keys ready!")
+        
+    def receive_exact(self, sock, length):
+        data = b""
+        while len(data) < length:
+            chunk = sock.recv(length - len(data))
+            if not chunk:
+                raise ConnectionError("Socket closed")
+            data += chunk
+        return data
     
     def load_keys(self):
         self.keygen()
@@ -50,26 +59,28 @@ class Log_Client:
         return encrypted_key
     
     def send_data(self, encrypted_data):
-        encrypted_aes_key, encrypted_logs, tag, nonce, signature = encrypted_data
+        aes_key, encrypted_logs, tag, nonce, signature = encrypted_data
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self.server_ip, self.server_port))
 
-        # Receive server public key
+        # Receive server public key ----
         server_key_len = struct.unpack(">I", s.recv(4))[0]
-        server_key_bytes = s.recv(server_key_len)
+        server_key_bytes = self.receive_exact(s, server_key_len)
         self.server_public_key = RSA.import_key(server_key_bytes)
         print("Received server public key")
 
-        # Send client public key
+        # Send client public key ----
         client_pub = open("client_public_key.pem", "rb").read()
         s.sendall(len(client_pub).to_bytes(4, "big") + client_pub)
         print("Client public key sent")
 
-        # Other BS
+        # Encrypt AES key ----
+        encrypted_aes_key = self.encrypt_aes_key(aes_key)
+
+        # Send all pieces ----
         pieces = [encrypted_aes_key, encrypted_logs, tag, nonce, signature]
         for piece in pieces:
-            length = len(piece).to_bytes(4, 'big')
             s.sendall(len(piece).to_bytes(4, 'big') + piece)
 
         s.close()
@@ -87,11 +98,11 @@ class Log_Client:
             encrypted_logs, tag, nonce, aes_key = self.encrypt_logs(logs)
             print("Logs encrypted with AES-256")
 
-            encrypted_aes_key = self.encrypt_aes_key(aes_key)
+            #encrypted_aes_key = self.encrypt_aes_key(aes_key)
+            encrypted_data = (aes_key, encrypted_logs, tag, nonce, signature)
             print("AES key encrypted with RSA")
-
-            encrypted_data = (encrypted_aes_key, encrypted_logs, tag, nonce, signature)
             self.send_data(encrypted_data)
+        
         except Exception as e:
             print(f"Error:{e}")
 
@@ -113,7 +124,7 @@ class Log_Client:
                 time.sleep(30)
 
 def main():
-    client = Log_Client()
+    client = Client()
     print("Please select what service you would like to use:")
     print("1. Send logs now")
     print("2. Start auto_send(daily at 17:00)")
