@@ -1,7 +1,8 @@
 # Client
 
-import os, time, datetime, socket, threading, schedule, struct
+import os, time, socket, threading, schedule, struct
 
+from datetime import datetime
 from Cryptodome.Cipher import PKCS1_OAEP, AES
 from Cryptodome.Hash import SHA512
 from Cryptodome.PublicKey import RSA
@@ -10,7 +11,7 @@ from Cryptodome.Random import get_random_bytes
 
 class Client:
     def __init__(self):
-        self.server_ip = "127.0.0.1"
+        self.server_ip = "192.168.2.253"
         self.server_port = 8080
         
     def keygen(self):
