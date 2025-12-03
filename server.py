@@ -12,6 +12,13 @@ class SecureLogServer:
         self.ip = ip
         self.port = port
         self.load_keys()
+        
+    def keygen(self):
+        if not os.path.exists("server_private_key.pem"):
+            print("Generating keys...")
+            k = RSA.generate(2048)
+            open("server_private_key.pem", "wb").write(k.export_key())
+            open("server_public_key.pem", "wb").write(k.publickey().export_key())
 
     def load_keys(self):
         self.server_priv = RSA.import_key(open("server_private_key.pem", "rb").read())
@@ -72,13 +79,7 @@ class SecureLogServer:
             conn.close()
 
     def start(self):
-        # KEY GENERATOR
-        if not os.path.exists("server_private_key.pem"):
-            print("Generating keys...")
-            k = RSA.generate(2048)
-            open("server_private_key.pem", "wb").write(k.export_key())
-            open("server_public_key.pem", "wb").write(k.publickey().export_key())
-    
+        self.keygen()    
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((self.ip, self.port))
