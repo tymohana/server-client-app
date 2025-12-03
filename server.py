@@ -1,7 +1,7 @@
-# Secure Server.py
-import socket
-import struct
-import os
+# Server
+
+import os, socket, structure
+
 from Crypto.Cipher import PKCS1_OAEP, AES
 from Crypto.Hash import SHA512
 from Crypto.PublicKey import RSA

@@ -1,15 +1,13 @@
-# Secure Server.py
-import socket
-import time
-import schedule
-import threading
+# Client
+
+import os, time, socket, threading, schedule
+
 from Crypto.Cipher import PKCS1_OAEP, AES
 from Crypto.Hash import SHA512
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Random import get_random_bytes
 from datetime import datetime
-import os
 
 class Log_Client:
     def __init__(self):
