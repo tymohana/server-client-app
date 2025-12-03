@@ -15,7 +15,7 @@ class Log_Client:
     
     def load_keys(self):
         # KEY GENERATOR
-        if not os.path.exists("server_private_key.pem"):
+        if not os.path.exists("client_private_key.pem"):
             print("Generating keys...")
             c = RSA.generate(2048)
             open("client_private_key.pem", "wb").write(c.export_key())
