@@ -14,6 +14,13 @@ class Log_Client:
         self.server_port = 8080
     
     def load_keys(self):
+        # KEY GENERATOR
+        if not os.path.exists("server_private_key.pem"):
+            print("Generating keys...")
+            c = RSA.generate(2048)
+            open("client_private_key.pem", "wb").write(c.export_key())
+            open("client_public_key.pem", "wb").write(c.publickey().export_key())
+            print("Keys ready!")
         self.client_private_key = RSA.import_key(open("client_private_key.pem", "rb").read())
         self.server_public_key = RSA.import_key(open("server_public_key.pem", "rb").read())
 

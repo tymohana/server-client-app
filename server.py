@@ -28,7 +28,7 @@ class SecureLogServer:
         return data
 
     def receive_msg(self, sock):
-        length = struct.unpack(">I", self.receive_exact(sock, 4))[0]
+        length = structure.unpack(">I", self.receive_exact(sock, 4))[0]
         return self.receive_exact(sock, length)
 
     def decrypt_aes(self, enc_key):
@@ -72,6 +72,13 @@ class SecureLogServer:
             conn.close()
 
     def start(self):
+        # KEY GENERATOR
+        if not os.path.exists("server_private_key.pem"):
+            print("Generating keys...")
+            k = RSA.generate(2048)
+            open("server_private_key.pem", "wb").write(k.export_key())
+            open("server_public_key.pem", "wb").write(k.publickey().export_key())
+    
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((self.ip, self.port))
@@ -80,18 +87,6 @@ class SecureLogServer:
         while True:
             conn, addr = s.accept()
             self.handle(conn, addr)
-
-
-#KEY GENERATOR
-if not os.path.exists("server_private_key.pem"):
-    print("Generating keys...")
-    k = RSA.generate(2048)
-    open("server_private_key.pem", "wb").write(k.export_key())
-    open("server_public_key.pem", "wb").write(k.publickey().export_key())
-    c = RSA.generate(2048)
-    open("client_private_key.pem", "wb").write(c.export_key())
-    open("client_public_key.pem", "wb").write(c.publickey().export_key())
-    print("Keys ready!")
 
 if __name__ == "__main__":
 
