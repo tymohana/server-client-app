@@ -1,12 +1,13 @@
+# Secure Server.py
 import socket
 import time
 import schedule
 import threading
-from Cryptodome.Cipher import PKCS1_OAEP, AES
-from Cryptodome.Hash import SHA512
-from Cryptodome.PublicKey import RSA
-from Cryptodome.Signature import PKCS1_v1_5
-from Cryptodome.Random import get_random_bytes
+from Crypto.Cipher import PKCS1_OAEP, AES
+from Crypto.Hash import SHA512
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.Random import get_random_bytes
 from datetime import datetime
 import os
 
@@ -14,14 +15,13 @@ class Log_Client:
     def __init__(self):
         self.server_ip = "127.0.0.1"
         self.server_port = 8080
+    
     def load_keys(self):
-        with open("client_private_key.pem", "rb") as f:
-            self.client_private_key = RSA.import_key(f.read())
-        with open("server_public_key.pem", "rb") as f:
-            self.server_public_key = RSA.import_key(f.read())
+        self.client_private_key = RSA.import_key(open("client_private_key.pem", "rb").read())
+        self.server_public_key = RSA.import_key(open("server_public_key.pem", "rb").read())
 
     def read_logs(self):
-        with open("logs.txt", "rb") as f:
+        with open("/var/log/syslog", "rb") as f:
             return f.read()
 
 
