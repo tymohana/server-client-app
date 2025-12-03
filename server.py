@@ -1,6 +1,6 @@
 # Server
 
-import os, socket, structure
+import os, socket, struct
 
 from Cryptodome.Cipher import PKCS1_OAEP, AES
 from Cryptodome.Hash import SHA512
@@ -28,7 +28,7 @@ class SecureLogServer:
         return data
 
     def receive_msg(self, sock):
-        length = structure.unpack(">I", self.receive_exact(sock, 4))[0]
+        length = struct.unpack(">I", self.receive_exact(sock, 4))[0]
         return self.receive_exact(sock, length)
 
     def decrypt_aes(self, enc_key):
@@ -89,5 +89,4 @@ class SecureLogServer:
             self.handle(conn, addr)
 
 if __name__ == "__main__":
-
     SecureLogServer().start()
