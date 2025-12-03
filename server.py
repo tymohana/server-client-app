@@ -22,7 +22,6 @@ class SecureLogServer:
 
     def load_keys(self):
         self.server_priv = RSA.import_key(open("server_private_key.pem", "rb").read())
-        self.client_pub = RSA.import_key(open("client_public_key.pem", "rb").read())
         print("Keys loaded")
 
     def receive_exact(self, sock, length):
@@ -48,10 +47,22 @@ class SecureLogServer:
     def verify(self, data, sig):
         h = SHA512.new(data)
         return PKCS1_v1_5.new(self.client_pub).verify(h, sig)
-
+    
     def handle(self, conn, addr):
         print(f"\n[+] Client connected: {addr[0]}")
+
         try:
+            # Send server public key
+            server_pub = open("server_public_key.pem", "rb").read()
+            conn.sendall(len(server_pub).to_bytes(4, "big") + server_pub)
+
+            # Receive client public key
+            client_pub_len = struct.unpack(">I", self.receive_exact(conn, 4))[0]
+            client_pub_bytes = self.receive_exact(conn, client_pub_len)
+            self.client_pub = RSA.import_key(client_pub_bytes)
+            print("Client public key received")
+
+            # Other BS
             encrypted_key = self.receive_msg(conn)
             encrypted_logs = self.receive_msg(conn)
             tag = self.receive_msg(conn)

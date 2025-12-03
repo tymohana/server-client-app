@@ -1,6 +1,6 @@
 # Client
 
-import os, time, datetime, socket, threading, schedule
+import os, time, datetime, socket, threading, schedule, struct
 
 from Cryptodome.Cipher import PKCS1_OAEP, AES
 from Cryptodome.Hash import SHA512
@@ -24,7 +24,6 @@ class Log_Client:
     def load_keys(self):
         self.keygen()
         self.client_private_key = RSA.import_key(open("client_private_key.pem", "rb").read())
-        self.server_public_key = RSA.import_key(open("server_public_key.pem", "rb").read())
 
     def read_logs(self):
         with open("/var/log/syslog", "rb") as f:
@@ -49,15 +48,30 @@ class Log_Client:
         cipher_rsa = PKCS1_OAEP.new(self.server_public_key)
         encrypted_key = cipher_rsa.encrypt(aes_key)
         return encrypted_key
-
+    
     def send_data(self, encrypted_data):
-        encrypted_aes_key , encrypted_logs , tag, nonce ,signature = encrypted_data
+        encrypted_aes_key, encrypted_logs, tag, nonce, signature = encrypted_data
+
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self.server_ip, self.server_port))
-        pieces = [encrypted_aes_key, encrypted_logs, tag,nonce, signature]
+
+        # Receive server public key
+        server_key_len = struct.unpack(">I", s.recv(4))[0]
+        server_key_bytes = s.recv(server_key_len)
+        self.server_public_key = RSA.import_key(server_key_bytes)
+        print("Received server public key")
+
+        # Send client public key
+        client_pub = open("client_public_key.pem", "rb").read()
+        s.sendall(len(client_pub).to_bytes(4, "big") + client_pub)
+        print("Client public key sent")
+
+        # Other BS
+        pieces = [encrypted_aes_key, encrypted_logs, tag, nonce, signature]
         for piece in pieces:
             length = len(piece).to_bytes(4, 'big')
-            s.sendall(length + piece)
+            s.sendall(len(piece).to_bytes(4, 'big') + piece)
+
         s.close()
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Logs sent successfully")
 
