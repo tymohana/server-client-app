@@ -2,10 +2,10 @@
 
 import os, socket, structure
 
-from Crypto.Cipher import PKCS1_OAEP, AES
-from Crypto.Hash import SHA512
-from Crypto.PublicKey import RSA
-from Crypto.Signature import PKCS1_v1_5
+from Cryptodome.Cipher import PKCS1_OAEP, AES
+from Cryptodome.Hash import SHA512
+from Cryptodome.PublicKey import RSA
+from Cryptodome.Signature import PKCS1_v1_5
 class SecureLogServer:
     def __init__(self, ip="127.0.0.1", port=8080):
         self.ip = ip
