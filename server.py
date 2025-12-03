@@ -11,7 +11,6 @@ class Server:
     def __init__(self, ip="0.0.0.0", port=8080):
         self.ip = ip
         self.port = port
-        self.load_keys()
         
     def keygen(self):
         if not os.path.exists("server_private_key.pem"):
@@ -90,7 +89,8 @@ class Server:
             conn.close()
 
     def start(self):
-        self.keygen()    
+        self.keygen()
+        self.load_keys()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((self.ip, self.port))
