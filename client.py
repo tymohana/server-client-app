@@ -65,27 +65,28 @@ class Client:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self.server_ip, self.server_port))
 
-        # Receive server public key ----
+        # Receive server public key
         server_key_len = struct.unpack(">I", s.recv(4))[0]
         server_key_bytes = self.receive_exact(s, server_key_len)
         self.server_public_key = RSA.import_key(server_key_bytes)
         print("Received server public key")
 
-        # Send client public key ----
+        # Send client public key
         client_pub = open("client_public_key.pem", "rb").read()
         s.sendall(len(client_pub).to_bytes(4, "big") + client_pub)
         print("Client public key sent")
 
-        # Encrypt AES key ----
+        # Encrypt AES key
         encrypted_aes_key = self.encrypt_aes_key(aes_key)
 
-        # Send all pieces ----
+        # Send all pieces
         pieces = [encrypted_aes_key, encrypted_logs, tag, nonce, signature]
         for piece in pieces:
             s.sendall(len(piece).to_bytes(4, 'big') + piece)
 
         s.close()
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Logs sent successfully")
+        #print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Logs sent successfully")
+        print("[{}] Logs sent successfully".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
 
     def send_logs(self):
         try:
@@ -135,6 +136,7 @@ def main():
         choice = input("\nChoose option (1-3): ").strip()
         if choice == "1":
             client.manual_send()
+        
         elif choice == "2":
             auto_thread = threading.Thread(target=client.auto_send, daemon=True)
             auto_thread.start()
@@ -142,6 +144,7 @@ def main():
 
         elif choice == "3":
             break
+        
         else:
             print("Invalid choice.")
 
