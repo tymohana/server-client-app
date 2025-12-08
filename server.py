@@ -1,6 +1,6 @@
 # Server
 
-import os, socket, struct
+import os, socket, struct, random
 
 from Cryptodome.Cipher import PKCS1_OAEP, AES
 from Cryptodome.Hash import SHA512
@@ -76,10 +76,12 @@ class Server:
                 print("BAD SIGNATURE")
                 return
 
-            with open("received_file.txt", "wb") as f:
+            randnum = random.randint(1, 100)
+            filename = f"received_file{randnum}.txt"
+            with open(filename, "wb") as f:
                 f.write(logs)
 
-            print(f"SUCCESS → received_file.txt ({len(logs)} bytes)")
+            print(f"SUCCESS → {filename} ({len(logs)} bytes)")
 
             conn.sendall(len(b"OK").to_bytes(4, "big") + b"OK")
 
