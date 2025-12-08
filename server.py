@@ -1,6 +1,6 @@
 # Server
 
-import os, socket, struct, random
+import os, socket, struct, random, time
 
 from Cryptodome.Cipher import PKCS1_OAEP, AES
 from Cryptodome.Hash import SHA512
@@ -84,6 +84,8 @@ class Server:
             print(f"SUCCESS → {filename} ({len(logs)} bytes)")
 
             conn.sendall(len(b"OK").to_bytes(4, "big") + b"OK")
+            
+            return logs
 
         except Exception as e:
             print(f"ERROR: {e}")
@@ -100,7 +102,12 @@ class Server:
         print(f"\nServer LISTENING on {self.ip}:{self.port}\n")
         while True:
             conn, addr = s.accept()
-            self.handle(conn, addr)
+            start = time.time()
+            data = self.handle(conn, addr)
+            size_bits = len(data) * 8
+            end = time.time()
+            throughput = size_bits / (end - start)
+            print(f"Receieved: {data.decode()} | Throughput: {throughput:.2f} bps")
 
 if __name__ == "__main__":
     Server().start()
