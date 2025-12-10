@@ -15,9 +15,10 @@ class Server:
     def keygen(self):
         if not os.path.exists("server_private_key.pem"):
             print("Generating keys...")
-            k = RSA.generate(2048)
-            open("server_private_key.pem", "wb").write(k.export_key())
-            open("server_public_key.pem", "wb").write(k.publickey().export_key())
+            key = RSA.generate(2048)
+            open("server_private_key.pem", "wb").write(key.export_key())
+            open("server_public_key.pem", "wb").write(key.publickey().export_key())
+        print("Keys generated.")
     
     def receive_exact(self, sock, length):
         data = b""
@@ -106,8 +107,8 @@ class Server:
             data = self.handle(conn, addr)
             size_bits = len(data) * 8
             end = time.time()
-            throughput = size_bits / (end - start)
-            print(f"Receieved: {data.decode()} | Throughput: {throughput:.2f} bps")
+            throughput = (size_bits / (end - start)) / 1000000
+            print(f"Receieved:\n{data.decode()}\n| Throughput: {throughput:.2f} MB/s")
 
 if __name__ == "__main__":
     Server().start()

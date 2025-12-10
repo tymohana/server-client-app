@@ -11,7 +11,7 @@ from Cryptodome.Random import get_random_bytes
 
 class Client:
     def __init__(self):
-        self.server_ip = "192.168.2.253"
+        self.server_ip = "192.168.100.2"
         self.server_port = 8080
         
     def keygen(self):
@@ -85,8 +85,7 @@ class Client:
             s.sendall(len(piece).to_bytes(4, 'big') + piece)
 
         s.close()
-        #print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Logs sent successfully")
-        print("[{}] Logs sent successfully".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Logs sent successfully")
 
     def send_logs(self):
         try:
@@ -121,9 +120,9 @@ class Client:
                 self.send_logs()
                 time.sleep(60)
             else:
-                next_check = f"Next check in 30 seconds (current time: {now.strftime('%H:%M:%S')})"
-                print(next_check, end='\r')
-                time.sleep(30)
+                #next_check = f"Next check in 30 seconds (current time: {now.strftime('%H:%M:%S')})"
+                #print(next_check, end='\r')
+                time.sleep(1)
 
 def main():
     client = Client()
