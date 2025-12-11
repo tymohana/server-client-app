@@ -133,6 +133,111 @@ class Server:
             print(f"ERROR: {e}")
         finally:
             conn.close()
+    
+    def list_encrypted_files(self):
+        """List all encrypted file sets stored in the `logs/` directory."""
+        logs_dir = "logs"
+        if not os.path.isdir(logs_dir):
+            print("[-] No logs directory found.")
+            return None
+
+        enc_files = {}
+        for file in os.listdir(logs_dir):
+            path = os.path.join(logs_dir, file)
+            if file.endswith('.enc') and not file.endswith('.key.enc'):
+                base = file[:-4]
+                if base not in enc_files:
+                    enc_files[base] = {'enc': None, 'key': None, 'tag': None, 'nonce': None}
+                enc_files[base]['enc'] = path
+
+        for file in os.listdir(logs_dir):
+            path = os.path.join(logs_dir, file)
+            if file.endswith('.key.enc'):
+                base = file[:-8]
+                if base not in enc_files:
+                    enc_files[base] = {'enc': None, 'key': None, 'tag': None, 'nonce': None}
+                enc_files[base]['key'] = path
+
+            elif file.endswith('.tag'):
+                base = file[:-4]
+                if base not in enc_files:
+                    enc_files[base] = {'enc': None, 'key': None, 'tag': None, 'nonce': None}
+                enc_files[base]['tag'] = path
+
+            elif file.endswith('.nonce'):
+                base = file[:-6]
+                if base not in enc_files:
+                    enc_files[base] = {'enc': None, 'key': None, 'tag': None, 'nonce': None}
+                enc_files[base]['nonce'] = path
+
+        if not enc_files:
+            print("[-] No encrypted files found in logs/")
+            return None
+
+        print(f"\n[+] Found {len(enc_files)} encrypted file set(s):\n")
+        for i, (base, files) in enumerate(enc_files.items(), 1):
+            complete = all([files['enc'], files['key'], files['tag'], files['nonce']])
+            status = "[COMPLETE]" if complete else "[INCOMPLETE]"
+            print(f"{i}. {base} {status}")
+            if files['enc']:
+                print(f"   - Data: {files['enc']}")
+            if files['key']:
+                print(f"   - Key: {files['key']}")
+
+        return enc_files
+    
+    def decrypt_stored_file(self, base_filename):
+        """Decrypt a file set stored under `logs/<base_filename>.*`.
+
+        Uses `self.server_priv` (loaded by `load_keys()`). Writes output to
+        `logs/<base_filename>_decrypted.txt`.
+        """
+        logs_dir = "logs"
+        key_path = os.path.join(logs_dir, base_filename + ".key.enc")
+        nonce_path = os.path.join(logs_dir, base_filename + ".nonce")
+        tag_path = os.path.join(logs_dir, base_filename + ".tag")
+        enc_path = os.path.join(logs_dir, base_filename + ".enc")
+
+        try:
+            # Ensure server private key is loaded
+            if not hasattr(self, 'server_priv'):
+                print("[-] Server private key not loaded. Call load_keys() first.")
+                return False
+
+            # Read encrypted AES key and decrypt it
+            with open(key_path, 'rb') as f:
+                encrypted_aes_key = f.read()
+            storage_key = PKCS1_OAEP.new(self.server_priv).decrypt(encrypted_aes_key)
+            print(f"[*] AES key decrypted from {key_path}")
+
+            # Read ciphertext, nonce and tag
+            with open(enc_path, 'rb') as f:
+                ciphertext = f.read()
+            with open(nonce_path, 'rb') as f:
+                nonce = f.read()
+            with open(tag_path, 'rb') as f:
+                tag = f.read()
+
+            # Decrypt and verify
+            cipher = AES.new(storage_key, AES.MODE_GCM, nonce=nonce)
+            plaintext = cipher.decrypt_and_verify(ciphertext, tag)
+            print("[+] File decrypted and verified successfully.")
+
+            out_path = os.path.join(logs_dir, base_filename + "_decrypted.txt")
+            with open(out_path, 'wb') as f:
+                f.write(plaintext)
+            print(f"[+] Decrypted content saved to {out_path}")
+            print("\n--- Decrypted Content (first 500 chars) ---")
+            print(plaintext[:500].decode('utf-8', errors='replace'))
+            print("--- End of Preview ---\n")
+            return True
+
+        except FileNotFoundError as e:
+            print(f"[-] Error: Missing file - {e}")
+            return False
+        except Exception as e:
+            print(f"[-] Decryption failed: {e}")
+            return False
 
     def start(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -145,10 +250,9 @@ class Server:
             start = time.time()
             data = self.handle(conn, addr)
             end = time.time()
-            size_bits = len(data) * 8
-            throughput = (size_bits / (end - start)) / 1000000
-            print(f"Received: {len(data)} bytes | Throughput: {throughput:.2f} MB/s")
-    
+            throughput = (len(data) * 8 / (end - start)) / 1000000
+            print(f"Received: {len(data)} bytes | Throughput: {throughput:.2f} Mbps")
+
     def start_threaded(self):
         """Start server in background thread and present interactive menu."""
         self.keygen()

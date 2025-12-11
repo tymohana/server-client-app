@@ -22,7 +22,7 @@ class Client:
             open("client_public_key.pem", "wb").write(c.publickey().export_key())
             print("Keys ready!")
         
-    def receive_exact(self, sock, length):
+    def receive_data(self, sock, length):
         data = b""
         while len(data) < length:
             chunk = sock.recv(length - len(data))
@@ -30,6 +30,34 @@ class Client:
                 raise ConnectionError("Socket closed")
             data += chunk
         return data
+    
+    def send_data(self, encrypted_data):
+        aes_key, encrypted_logs, tag, nonce, signature = encrypted_data
+
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((self.server_ip, self.server_port))
+
+        # Receive server public key
+        server_key_len = struct.unpack(">I", s.recv(4))[0]
+        server_key_bytes = self.receive_data(s, server_key_len)
+        self.server_public_key = RSA.import_key(server_key_bytes)
+        print("Received server public key")
+
+        # Send client public key
+        client_pub = open("client_public_key.pem", "rb").read()
+        s.sendall(len(client_pub).to_bytes(4, "big") + client_pub)
+        print("Client public key sent")
+
+        # Encrypt AES key
+        encrypted_aes_key = self.enc_aes_key(aes_key)
+
+        # Send all pieces
+        pieces = [encrypted_aes_key, encrypted_logs, tag, nonce, signature]
+        for piece in pieces:
+            s.sendall(len(piece).to_bytes(4, 'big') + piece)
+
+        s.close()
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Logs sent successfully")
     
     def load_keys(self):
         self.keygen()
@@ -54,38 +82,10 @@ class Client:
         return ciphertext, tag, cipher_aes.nonce , aes_key
 
     # Encrypt AES key with RSA
-    def encrypt_aes_key(self, aes_key):
+    def enc_aes_key(self, aes_key):
         cipher_rsa = PKCS1_OAEP.new(self.server_public_key)
         encrypted_key = cipher_rsa.encrypt(aes_key)
         return encrypted_key
-    
-    def send_data(self, encrypted_data):
-        aes_key, encrypted_logs, tag, nonce, signature = encrypted_data
-
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((self.server_ip, self.server_port))
-
-        # Receive server public key
-        server_key_len = struct.unpack(">I", s.recv(4))[0]
-        server_key_bytes = self.receive_exact(s, server_key_len)
-        self.server_public_key = RSA.import_key(server_key_bytes)
-        print("Received server public key")
-
-        # Send client public key
-        client_pub = open("client_public_key.pem", "rb").read()
-        s.sendall(len(client_pub).to_bytes(4, "big") + client_pub)
-        print("Client public key sent")
-
-        # Encrypt AES key
-        encrypted_aes_key = self.encrypt_aes_key(aes_key)
-
-        # Send all pieces
-        pieces = [encrypted_aes_key, encrypted_logs, tag, nonce, signature]
-        for piece in pieces:
-            s.sendall(len(piece).to_bytes(4, 'big') + piece)
-
-        s.close()
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Logs sent successfully")
 
     def send_logs(self):
         try:
@@ -99,7 +99,7 @@ class Client:
             encrypted_logs, tag, nonce, aes_key = self.encrypt_logs(logs)
             print("Logs encrypted with AES-256")
 
-            #encrypted_aes_key = self.encrypt_aes_key(aes_key)
+            #encrypted_aes_key = self.enc_aes_key(aes_key)
             encrypted_data = (aes_key, encrypted_logs, tag, nonce, signature)
             print("AES key encrypted with RSA")
 
@@ -109,9 +109,8 @@ class Client:
             end = time.time()
 
             # Calculate throughput in MB/s using original logs size (bits -> megabytes)
-            size_bits = len(logs) * 8
-            throughput = (size_bits / (end - start)) / 1000000
-            print(f"Sent: {len(logs)} bytes | Throughput: {throughput:.2f} MB/s")
+            throughput = (len(logs) * 8 / (end - start)) / 1000000
+            print(f"Sent: {len(logs)} bytes | Throughput: {throughput:.2f} Mbps")
         
         except Exception as e:
             print(f"Error:{e}")
