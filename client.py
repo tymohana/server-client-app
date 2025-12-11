@@ -102,7 +102,16 @@ class Client:
             #encrypted_aes_key = self.encrypt_aes_key(aes_key)
             encrypted_data = (aes_key, encrypted_logs, tag, nonce, signature)
             print("AES key encrypted with RSA")
+
+            # Measure throughput for the send operation
+            start = time.time()
             self.send_data(encrypted_data)
+            end = time.time()
+
+            # Calculate throughput in MB/s using original logs size (bits -> megabytes)
+            size_bits = len(logs) * 8
+            throughput = (size_bits / (end - start)) / 1000000
+            print(f"Sent: {len(logs)} bytes | Throughput: {throughput:.2f} MB/s")
         
         except Exception as e:
             print(f"Error:{e}")

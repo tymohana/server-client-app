@@ -1,6 +1,6 @@
 # Server
 
-import os, socket, struct, random, time
+import os, socket, struct, random, time, threading
 
 from Cryptodome.Cipher import PKCS1_OAEP, AES
 from Cryptodome.Hash import SHA512
@@ -77,12 +77,53 @@ class Server:
                 print("BAD SIGNATURE")
                 return
 
-            randnum = random.randint(1, 100)
-            filename = f"received_file{randnum}.txt"
-            with open(filename, "wb") as f:
-                f.write(logs)
+            # 1. Use AES key
+            storage_key = aes_key
 
-            print(f"SUCCESS → {filename} ({len(logs)} bytes)")
+            # 2. Encrypt file with AES-GCM
+            storage_cipher = AES.new(storage_key, AES.MODE_GCM)
+            storage_ciphertext, storage_tag = storage_cipher.encrypt_and_digest(logs)
+            storage_nonce = storage_cipher.nonce
+
+            # 3. Encrypt AES key with server public RSA key
+            server_pub = RSA.import_key(open('server_public_key.pem', 'rb').read())
+            rsa_cipher = PKCS1_OAEP.new(server_pub)
+            encrypted_storage_key = rsa_cipher.encrypt(storage_key)
+
+            # 4. Generate filename
+            randnum = random.randint(1, 9999)
+            base_filename = f"{addr[0]}_{addr[1]}_received_file_{randnum}"
+
+            # 5. Save AES-encrypted file into a dedicated `logs` directory
+            logs_dir = "logs"
+            os.makedirs(logs_dir, exist_ok=True)
+
+            enc_path = os.path.join(logs_dir, base_filename + ".enc")
+            keyenc_path = os.path.join(logs_dir, base_filename + ".key.enc")
+            nonce_path = os.path.join(logs_dir, base_filename + ".nonce")
+            tag_path = os.path.join(logs_dir, base_filename + ".tag")
+
+            with open(enc_path, "wb") as f:
+                f.write(storage_ciphertext)
+
+            # Save RSA-encrypted AES key
+            with open(keyenc_path, "wb") as f:
+                f.write(encrypted_storage_key)
+
+            # Save GCM metadata
+            with open(nonce_path, "wb") as f:
+                f.write(storage_nonce)
+
+            with open(tag_path, "wb") as f:
+                f.write(storage_tag)
+
+            print("Encrypted file stored securely:")
+            print(enc_path)
+            print("  AES key (RSA-encrypted):", keyenc_path)
+            print("  GCM tag:", tag_path)
+            print("  GCM nonce:", nonce_path)
+
+            print(f"SUCCESS → {base_filename} ({len(logs)} bytes)")
 
             conn.sendall(len(b"OK").to_bytes(4, "big") + b"OK")
             
@@ -94,8 +135,6 @@ class Server:
             conn.close()
 
     def start(self):
-        self.keygen()
-        self.load_keys()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((self.ip, self.port))
@@ -105,10 +144,48 @@ class Server:
             conn, addr = s.accept()
             start = time.time()
             data = self.handle(conn, addr)
-            size_bits = len(data) * 8
             end = time.time()
+            size_bits = len(data) * 8
             throughput = (size_bits / (end - start)) / 1000000
-            print(f"Receieved:\n{data.decode()}\n| Throughput: {throughput:.2f} MB/s")
+            print(f"Received: {len(data)} bytes | Throughput: {throughput:.2f} MB/s")
+    
+    def start_threaded(self):
+        """Start server in background thread and present interactive menu."""
+        self.keygen()
+        self.load_keys()
 
-if __name__ == "__main__":
-    Server().start()
+        # Start server in background thread
+        server_thread = threading.Thread(target=self.start, daemon=True)
+        server_thread.start()
+        print("\n[+] Server started in background.")
+        
+        # Main menu loop
+        while True:
+            print("\n--- Server Menu ---")
+            print("1. List encrypted files")
+            print("2. Decrypt a file")
+            print("3. Exit")
+            choice = input("Select an option: ").strip()
+
+            if choice == '1':
+                self.list_encrypted_files()
+
+            elif choice == '2':
+                enc_files = self.list_encrypted_files()
+                if enc_files:
+                    try:
+                        idx = int(input("\nEnter file number to decrypt: "))
+                        base_filename = list(enc_files.keys())[idx - 1]
+                        self.decrypt_stored_file(base_filename)
+                    except (ValueError, IndexError):
+                        print("[-] Invalid selection.")
+
+            elif choice == '3':
+                print("Exiting...")
+                break
+
+            else:
+                print("[-] Invalid option.")
+        
+if __name__ == '__main__':
+    Server().start_threaded()
